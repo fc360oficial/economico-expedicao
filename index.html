@@ -434,7 +434,15 @@ function renderLista(docs, containerId, mostrarBotoes) {
       }
     }
     if (d.status === 'saiu') {
-      btnsHtml = '<button class="btn btn-blue" onclick="marcarEntregue(\''+doc.id+'\',\''+encodeURIComponent(d.nome||'')+'\',\''+encodeURIComponent(d.num||'')+'\',\''+phone+'\',this)">🏁 Marcar Entregue</button>';
+      if (d.codigoEntrega) {
+        btnsHtml = '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+          + '<input type="tel" id="cod-'+doc.id+'" placeholder="Código do cliente" maxlength="4" style="flex:1;min-width:120px;padding:8px 12px;background:#111;border:2px solid #444;border-radius:8px;color:#fff;font-size:20px;font-family:inherit;letter-spacing:6px;text-align:center;outline:none">'
+          + '<button class="btn btn-blue" onclick="verificarCodigo(\''+doc.id+'\',\''+d.codigoEntrega+'\',\''+encodeURIComponent(d.nome||'')+'\',\''+encodeURIComponent(d.num||'')+'\',\''+phone+'\')">✓ Confirmar</button>'
+          + '</div>'
+          + '<div style="font-size:11px;color:#666;margin-top:4px">Peça o código de 4 dígitos ao cliente</div>';
+      } else {
+        btnsHtml = '<button class="btn btn-blue" onclick="marcarEntregue(\''+doc.id+'\',\''+encodeURIComponent(d.nome||'')+'\',\''+encodeURIComponent(d.num||'')+'\',\''+phone+'\',this)">🏁 Marcar Entregue</button>';
+      }
     }
 
     var ajusteBtn = (mostrarBotoes || d.status === 'saiu')
@@ -543,14 +551,15 @@ function selecionarCupom(input) {
 
 function confirmarSaiu() {
   document.getElementById('dlg-cupom').style.display = 'none';
-  var update = { status: 'saiu' };
+  var codigo = String(Math.floor(1000 + Math.random() * 9000));
+  var update = { status: 'saiu', codigoEntrega: codigo };
   if (_cupomUrl) update.cupomFiscalUrl = _cupomUrl;
   db.collection('pedidos').doc(_saiu_docId).update(update)
     .then(function() {
       fetchPedidos();
       showToast('Pedido finalizado!');
       if (_saiu_phone) {
-        var msg = '🛵 Olá! Seu pedido '+_saiu_num+' saiu para entrega e chegará em breve. Obrigado por comprar no Econômico Delivery!';
+        var msg = '🛵 Olá! Seu pedido '+_saiu_num+' saiu para entrega!\n\n🔐 Seu código de confirmação de entrega: *'+codigo+'*\n\nInforme este código ao entregador na hora da entrega.';
         window.open('https://wa.me/55'+_saiu_phone+'?text='+encodeURIComponent(msg), '_blank');
       }
     })
@@ -570,6 +579,29 @@ function marcarEntregue(docId, nomeEnc, numEnc, phone, btn) {
       }
     })
     .catch(function(e){ btn.disabled=false; btn.textContent='🏁 Marcar Entregue'; alert('Erro: '+e.message); });
+}
+
+function verificarCodigo(docId, codigoCorreto, nomeEnc, numEnc, phone) {
+  var input = document.getElementById('cod-'+docId);
+  var digitado = input ? input.value.trim() : '';
+  if (digitado.length !== 4) { showToast('Digite os 4 dígitos'); input && input.focus(); return; }
+  if (digitado !== codigoCorreto) {
+    showToast('Código incorreto!');
+    input.style.borderColor = '#e31e24';
+    setTimeout(function(){ input.style.borderColor = '#444'; }, 1500);
+    return;
+  }
+  input.disabled = true;
+  db.collection('pedidos').doc(docId).update({ status: 'entregue' })
+    .then(function() {
+      fetchPedidos();
+      showToast('Entrega confirmada!');
+      if (phone) {
+        var msg = '✅ Olá '+decodeURIComponent(nomeEnc)+'! Seu pedido '+decodeURIComponent(numEnc)+' foi entregue. Esperamos que tenha gostado! Volte sempre 😊';
+        window.open('https://wa.me/55'+phone+'?text='+encodeURIComponent(msg), '_blank');
+      }
+    })
+    .catch(function(e){ input.disabled=false; alert('Erro: '+e.message); });
 }
 
 function imprimirPedido(docId, btn) {
