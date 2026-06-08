@@ -224,6 +224,27 @@
   </div>
 </div>
 
+<!-- MODAL AJUSTE DE PEDIDO -->
+<div class="modal-overlay" id="dlg-ajustar" onclick="if(event.target===this)fecharAjuste()">
+  <div class="modal-box" style="max-height:90vh;overflow-y:auto">
+    <div class="modal-title">✏️ Ajustar Pedido <span id="aj-num" style="color:var(--y)"></span></div>
+    <div class="modal-sub">Reduza a quantidade dos itens que não tem no estoque</div>
+    <div id="aj-items"></div>
+    <div id="aj-aviso-pix" style="display:none;background:#431407;border:1px solid #f97316;border-radius:10px;padding:12px;font-size:13px;color:#fb923c;margin:12px 0"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-top:1px solid var(--border);margin-top:8px">
+      <span style="font-size:13px;color:var(--text2)">Novo total:</span>
+      <span id="aj-total" style="font-size:20px;font-weight:900;color:var(--y)">R$0,00</span>
+    </div>
+    <div id="aj-wa-row" style="display:none;margin-bottom:12px">
+      <a id="aj-wa-link" href="#" target="_blank" class="btn btn-green" style="display:block;text-align:center;text-decoration:none;padding:12px">💬 Avisar cliente no WhatsApp</a>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-outline" style="flex:1" onclick="fecharAjuste()">Cancelar</button>
+      <button class="btn btn-orange" style="flex:2" id="aj-salvar-btn" onclick="salvarAjuste()">Salvar ajuste</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL CUPOM FISCAL -->
 <div class="modal-overlay" id="dlg-cupom" onclick="if(event.target===this)fecharCupom()">
   <div class="modal-box">
@@ -412,11 +433,29 @@ function renderLista(docs, containerId, mostrarBotoes) {
       btnsHtml = '<button class="btn btn-blue" onclick="marcarEntregue(\''+doc.id+'\',\''+encodeURIComponent(d.nome||'')+'\',\''+encodeURIComponent(d.num||'')+'\',\''+phone+'\',this)">🏁 Marcar Entregue</button>';
     }
 
+    var ajusteBtn = (mostrarBotoes || d.status === 'saiu')
+      ? '<button class="btn-print" style="color:var(--orange);border-color:var(--orange)" onclick="abrirAjuste(\''+doc.id+'\')">✏️ Ajustar</button>'
+      : '';
+    var ajusteLog = (d.ajustado && d.ajustes && d.ajustes.length)
+      ? '<div id="log-'+doc.id+'" style="display:none;margin-top:10px;background:#111;border-radius:8px;padding:12px;font-size:12px">'
+          +'<div style="font-weight:800;color:var(--y);margin-bottom:8px">📋 Histórico de ajustes</div>'
+          +d.ajustes.map(function(a){
+            return '<div style="border-left:2px solid #333;padding-left:10px;margin-bottom:10px">'
+              +'<div style="color:#aaa;font-size:11px;margin-bottom:4px">🕐 '+a.dataStr+'</div>'
+              +(a.alteracoes||[]).map(function(l){ return '<div style="color:#eee">'+l+'</div>'; }).join('')
+              +'<div style="color:#aaa;margin-top:4px">R$'+Number(a.totalAnterior||0).toFixed(2).replace('.',',')
+              +' → <strong style="color:var(--y)">R$'+Number(a.novoTotal||0).toFixed(2).replace('.',',')+'</strong></div>'
+              +'</div>';
+          }).join('')
+        +'</div>'
+      : '';
+
     return '<div class="pedido-card'+(d.status==='recebido'?' urgente':'')+'">'
       +'<div class="pedido-header">'
         +'<span class="pedido-num">'+d.num+'</span>'
         +'<span class="pedido-nome">'+d.nome+'</span>'
         +(d.agendado?'<span class="badge badge-agend">📅 Agendado</span>':'')
+        +(d.ajustado?'<span class="badge" style="background:#3d1a00;color:var(--orange);cursor:pointer" onclick="toggleAjLog(\'log-'+doc.id+'\')">✏️ Ajustado</span>':'')
         +'<span class="badge '+st.badge+'">'+st.txt+'</span>'
       +'</div>'
       +agendHtml
@@ -424,9 +463,10 @@ function renderLista(docs, containerId, mostrarBotoes) {
         +'<div class="pedido-itens-title">Itens do pedido</div>'
         +itens
       +'</div>'
+      +ajusteLog
       +modoHtml
       +'<div class="pedido-info">📱 '+(d.phone||'—')+' · <span class="pagto-badge">'+pagto+'</span><br>🕐 '+dt+'</div>'
-      +'<div class="btns-row">'+btnsHtml+waLink
+      +'<div class="btns-row">'+btnsHtml+waLink+ajusteBtn
         +'<button class="btn-print" onclick="imprimirPedido(\''+doc.id+'\',this)">🖨️ Imprimir</button>'
       +'</div>'
       +'</div>';
@@ -609,6 +649,137 @@ function showToast(msg) {
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js');
+}
+
+// ── AJUSTE DE PEDIDO ─────────────────────────────────────────────────────────
+var _ajDocId = null, _ajData = null, _ajOriginal = null, _cfgWa = null;
+
+// Carrega whatsapp do config para auditoria
+db.collection('config').doc('loja').get().then(function(doc) {
+  if (doc.exists) _cfgWa = doc.data().whatsapp || null;
+});
+
+function toggleAjLog(id) {
+  var el = document.getElementById(id);
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function abrirAjuste(docId) {
+  _ajDocId = docId;
+  document.getElementById('aj-items').innerHTML = '<div style="padding:20px;text-align:center;color:var(--text2)">Carregando…</div>';
+  document.getElementById('aj-wa-row').style.display = 'none';
+  document.getElementById('aj-aviso-pix').style.display = 'none';
+  document.getElementById('aj-salvar-btn').textContent = 'Salvar ajuste';
+  document.getElementById('aj-salvar-btn').disabled = false;
+  document.getElementById('dlg-ajustar').style.display = 'flex';
+  db.collection('pedidos').doc(docId).get().then(function(doc) {
+    if (!doc.exists) return;
+    _ajData = doc.data();
+    _ajOriginal = (_ajData.itens || []).map(function(it){ return {name:it.name, qty:it.qty, price:it.price}; });
+    document.getElementById('aj-num').textContent = _ajData.num || '';
+    _renderAjItems();
+  });
+}
+
+function _renderAjItems() {
+  var itens = _ajData.itens || [];
+  document.getElementById('aj-items').innerHTML = itens.map(function(item, i) {
+    return '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">'
+      +'<div style="flex:1;font-size:13px;font-weight:600">'+item.name+'</div>'
+      +'<div style="display:flex;align-items:center;gap:6px">'
+        +'<button onclick="_ajQty('+i+',-1)" style="width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:none;color:var(--text);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center">−</button>'
+        +'<span id="aj-qty-'+i+'" style="min-width:28px;text-align:center;font-weight:900;font-size:16px">'+item.qty+'</span>'
+        +'<button onclick="_ajQty('+i+',1)" style="width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:none;color:var(--text);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center">+</button>'
+      +'</div>'
+      +'</div>';
+  }).join('');
+  _ajCalcTotal();
+}
+
+function _ajQty(i, d) {
+  var itens = _ajData.itens;
+  itens[i].qty = Math.max(0, (itens[i].qty || 0) + d);
+  var el = document.getElementById('aj-qty-'+i);
+  el.textContent = itens[i].qty;
+  el.style.color = itens[i].qty === 0 ? 'var(--red)' : 'var(--text)';
+  _ajCalcTotal();
+}
+
+function _ajCalcTotal() {
+  var itens = _ajData.itens || [];
+  var sub = itens.reduce(function(s, it){ return s + (it.qty * it.price); }, 0);
+  var frete = _ajData.frete || 0;
+  var desc = _ajData.desconto || 0;
+  var novoTotal = Math.max(0, sub - desc + frete);
+  document.getElementById('aj-total').textContent = 'R$' + novoTotal.toFixed(2).replace('.',',');
+  var totalOriginal = _ajData.total || 0;
+  var aviso = document.getElementById('aj-aviso-pix');
+  if (_ajData.pagamento === 'pix' && _ajData.pagamentoPago && novoTotal < totalOriginal) {
+    var diff = (totalOriginal - novoTotal).toFixed(2).replace('.',',');
+    aviso.style.display = 'block';
+    aviso.textContent = '⚠️ Cliente pagou R$'+Number(totalOriginal).toFixed(2).replace('.',',')+' via PIX. Com o ajuste, ficou R$'+diff+' a devolver ou abater no próximo pedido.';
+  } else {
+    aviso.style.display = 'none';
+  }
+}
+
+function fecharAjuste() {
+  document.getElementById('dlg-ajustar').style.display = 'none';
+}
+
+function salvarAjuste() {
+  var btn = document.getElementById('aj-salvar-btn');
+  btn.textContent = 'Salvando…'; btn.disabled = true;
+  var itens = (_ajData.itens || []).filter(function(it){ return it.qty > 0; });
+  var sub = itens.reduce(function(s, it){ return s + (it.qty * it.price); }, 0);
+  var frete = _ajData.frete || 0;
+  var desc = _ajData.desconto || 0;
+  var novoTotal = Math.max(0, sub - desc + frete);
+  var itensTxt = itens.map(function(i){ return i.qty+'x '+i.name; }).join(', ');
+  var agora = new Date();
+  var agoraStr = agora.toLocaleString('pt-BR');
+  var linhasAuditoria = (_ajOriginal||[]).map(function(orig) {
+    var novo = itens.find(function(it){ return it.name === orig.name; });
+    var novaQty = novo ? novo.qty : 0;
+    if (novaQty === orig.qty) return null;
+    if (novaQty === 0) return '❌ '+orig.name+': removido (era '+orig.qty+'x)';
+    return '✏️ '+orig.name+': '+orig.qty+'x → '+novaQty+'x';
+  }).filter(Boolean);
+
+  var logEntry = {
+    data: agora.toISOString(), dataStr: agoraStr,
+    alteracoes: linhasAuditoria,
+    totalAnterior: _ajData.total || 0, novoTotal: novoTotal
+  };
+
+  db.collection('pedidos').doc(_ajDocId).update({
+    itens: itens, subtotal: sub, total: novoTotal, ajustado: true,
+    ajustes: firebase.firestore.FieldValue.arrayUnion(logEntry)
+  }).then(function() {
+    btn.textContent = '✅ Salvo!';
+    showToast('Pedido ajustado!');
+    fetchPedidos();
+
+    // Auditoria automática para o gestor via WhatsApp
+    if (linhasAuditoria.length && _cfgWa) {
+      var msgAuditoria = '⚠️ *AJUSTE DE PEDIDO — AUDITORIA*\n'
+        +'📦 Pedido: '+(_ajData.num||_ajDocId)+'\n'
+        +'👤 Cliente: '+(_ajData.nome||'—')+'\n'
+        +'🕐 Horário: '+agoraStr+'\n\n'
+        +'*Alterações:*\n'+linhasAuditoria.join('\n')+'\n\n'
+        +'💰 Total original: R$'+Number(_ajData.total||0).toFixed(2).replace('.',',')+'\n'
+        +'💰 Novo total: R$'+novoTotal.toFixed(2).replace('.',',');
+      window.open('https://wa.me/55'+_cfgWa.replace(/\D/g,'')+'?text='+encodeURIComponent(msgAuditoria),'_blank');
+    }
+
+    // Botão para avisar cliente
+    if (_ajData.phone) {
+      var msgCliente = '📦 Olá '+(_ajData.nome||'')+', seu pedido '+(_ajData.num||'')+' foi ajustado.\n\nNovos itens: '+itensTxt+'\n💰 Novo total: R$'+novoTotal.toFixed(2).replace('.',',')+'\n\nQualquer dúvida estamos à disposição!';
+      document.getElementById('aj-wa-link').href = 'https://wa.me/55'+_ajData.phone.replace(/\D/g,'')+'?text='+encodeURIComponent(msgCliente);
+      document.getElementById('aj-wa-row').style.display = 'block';
+    }
+    setTimeout(function(){ btn.textContent='Salvar ajuste'; btn.disabled=false; }, 2000);
+  }).catch(function(e){ btn.textContent='Salvar ajuste'; btn.disabled=false; alert('Erro: '+e.message); });
 }
 </script>
 </body>
