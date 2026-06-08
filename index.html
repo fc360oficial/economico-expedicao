@@ -578,8 +578,12 @@ function imprimirPedido(docId, btn) {
     btn.textContent = '🖨️ Imprimir';
     if (!doc.exists) return;
     var d = doc.data();
+    var fmt = function(v){ return 'R$'+Number(v||0).toFixed(2).replace('.',','); };
     var itens = (d.itens||[]).map(function(i){
-      return '<tr><td style="padding:6px 8px;border-bottom:1px solid #eee">'+i.qty+'x '+i.name+'</td></tr>';
+      return '<tr>'
+        +'<td style="padding:6px 8px;border-bottom:1px solid #eee">'+i.qty+'x '+i.name+'</td>'
+        +'<td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap">'+fmt(i.qty*i.price)+'</td>'
+        +'</tr>';
     }).join('');
     var data = d.createdAt && d.createdAt.toDate ? d.createdAt.toDate().toLocaleString('pt-BR') : '—';
     var agendLinha = d.agendado && d.agendadoPara
@@ -595,6 +599,7 @@ function imprimirPedido(docId, btn) {
       +'.modo-badge{display:inline-block;margin-top:4px;font-size:11px;font-weight:700;border:1.5px solid #111;padding:2px 8px;border-radius:4px}'
       +'h2{font-size:13px;margin:12px 0 4px;border-bottom:1.5px solid #111;padding-bottom:2px;text-transform:uppercase}'
       +'table{width:100%;border-collapse:collapse}.info td{padding:4px 0}.info td:first-child{font-weight:700;width:120px}'
+      +'.total-row td{font-weight:800;font-size:15px;border-top:2px solid #111;padding-top:6px}'
       +'@media print{body{padding:0}}</style></head><body>'
       +'<div class="print-header">'
         +'<img class="print-logo" src="'+logoUrl+'" onerror="this.style.display=\'none\'">'
@@ -612,7 +617,19 @@ function imprimirPedido(docId, btn) {
         +(d.agendado&&d.agendadoPara?'<tr><td>Agendado</td><td style="font-weight:700;color:#b45309">'+d.agendadoPara+'</td></tr>':'')
       +'</table>'
       +'<h2>Itens</h2>'
-      +'<table><tbody>'+agendLinha+itens+'</tbody></table>'
+      +'<table>'
+        +'<thead><tr>'
+          +'<th style="text-align:left;padding:4px 8px;background:#f5f5f5">Produto</th>'
+          +'<th style="text-align:right;padding:4px 8px;background:#f5f5f5">Valor</th>'
+        +'</tr></thead>'
+        +'<tbody>'+agendLinha+itens+'</tbody>'
+        +'<tfoot>'
+          +(d.desconto>0?'<tr><td style="padding:4px 8px">Desconto</td><td style="text-align:right;padding:4px 8px;color:green">-'+fmt(d.desconto)+'</td></tr>':'')
+          +(d.frete>0?'<tr><td style="padding:4px 8px">Taxa de entrega</td><td style="text-align:right;padding:4px 8px">'+fmt(d.frete)+'</td></tr>':'')
+          +'<tr class="total-row"><td style="padding:6px 8px">TOTAL</td><td style="text-align:right;padding:6px 8px">'+fmt(d.total)+'</td></tr>'
+        +'</tfoot>'
+      +'</table>'
+      +(d.ajustado?'<div style="margin-top:10px;padding:8px;background:#fff3cd;border-radius:4px;font-size:11px;font-weight:700;color:#b45309">⚠️ Pedido ajustado — conferir itens com o cupom fiscal</div>':'')
       +'<div style="margin-top:24px;border-top:1px dashed #ccc;padding-top:12px;font-size:11px;color:#888;text-align:center">Econômico Delivery · Separação '+d.num+'</div>'
       +'<script>window.onload=function(){window.print();}<\/script>'
       +'</body></html>';
