@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Econômico Expedição</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#FFC600">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --y: #FFC600; --dark: #0d0d0d; --card: #1a1a1a;
+      --border: #2a2a2a; --text: #f0f0f0; --text2: #999;
+      --green: #22c55e; --red: #ef4444; --orange: #f97316; --blue: #3b82f6;
+    }
+    body { font-family: 'Inter', sans-serif; background: var(--dark); color: var(--text); min-height: 100vh; }
+
+    /* LOGIN */
+    #login-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+    .login-box { background: var(--card); border-radius: 20px; padding: 40px 32px; width: 100%; max-width: 360px; text-align: center; }
+    .login-logo { font-size: 40px; margin-bottom: 8px; }
+    .login-title { font-size: 22px; font-weight: 900; color: var(--y); margin-bottom: 4px; }
+    .login-sub { font-size: 13px; color: var(--text2); margin-bottom: 32px; }
+    .login-input {
+      width: 100%; background: #111; border: 1px solid var(--border); border-radius: 10px;
+      padding: 13px 16px; color: var(--text); font-size: 15px; font-family: inherit;
+      outline: none; margin-bottom: 12px; transition: border-color .2s;
+    }
+    .login-input:focus { border-color: var(--y); }
+    .login-btn {
+      width: 100%; padding: 14px; border-radius: 10px; background: var(--y);
+      border: none; color: #1a1a1a; font-size: 15px; font-weight: 800;
+      font-family: inherit; cursor: pointer;
+    }
+    .login-err { font-size: 12px; color: var(--red); margin-top: 8px; min-height: 18px; }
+
+    /* HEADER */
+    #app-screen { display: none; flex-direction: column; min-height: 100vh; }
+    .header {
+      background: var(--card); border-bottom: 1px solid var(--border);
+      padding: 14px 20px; display: flex; align-items: center; gap: 12px;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .header-brand { font-size: 16px; font-weight: 900; color: var(--y); }
+    .header-role { font-size: 12px; color: var(--text2); flex: 1; }
+    .header-logout {
+      background: none; border: 1px solid var(--border); color: var(--text2);
+      padding: 6px 14px; border-radius: 8px; font-size: 12px; cursor: pointer; font-family: inherit;
+    }
+
+    /* ABAS */
+    .tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--card); }
+    .tab {
+      flex: 1; padding: 12px 8px; text-align: center; font-size: 13px; font-weight: 700;
+      color: var(--text2); cursor: pointer; border-bottom: 2px solid transparent;
+      transition: all .2s;
+    }
+    .tab.active { color: var(--y); border-bottom-color: var(--y); }
+
+    /* CONTEÚDO */
+    .tab-content { display: none; padding: 16px; }
+    .tab-content.active { display: block; }
+
+    /* STATS */
+    .stats-row { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+    .stat-card {
+      flex: 1; min-width: 80px; background: var(--card); border-radius: 12px;
+      padding: 12px; text-align: center; border: 1px solid var(--border);
+    }
+    .stat-val { font-size: 24px; font-weight: 900; color: var(--y); }
+    .stat-label { font-size: 11px; color: var(--text2); margin-top: 2px; }
+
+    /* PEDIDOS */
+    .pedido-card {
+      background: var(--card); border-radius: 14px; padding: 16px;
+      margin-bottom: 12px; border: 1px solid var(--border);
+    }
+    .pedido-card.urgente { border-color: var(--y); }
+    .pedido-header { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+    .pedido-num { font-size: 16px; font-weight: 900; color: var(--y); }
+    .pedido-nome { font-size: 13px; font-weight: 700; flex: 1; }
+    .badge {
+      display: inline-flex; align-items: center; padding: 3px 10px;
+      border-radius: 20px; font-size: 11px; font-weight: 700;
+    }
+    .badge-blue { background: #1e3a5f; color: #60a5fa; }
+    .badge-y    { background: #3d2f00; color: #FFC600; }
+    .badge-green{ background: #052e16; color: #4ade80; }
+    .badge-orange{ background: #431407; color: #fb923c; }
+    .badge-agend{ background: #1e1b4b; color: #a5b4fc; }
+
+    .pedido-info { font-size: 12px; color: var(--text2); margin-bottom: 10px; line-height: 1.6; }
+    .pedido-itens {
+      background: #111; border-radius: 10px; padding: 12px; margin-bottom: 12px;
+    }
+    .pedido-itens-title { font-size: 11px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; }
+    .item-linha { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid #1a1a1a; font-size: 13px; }
+    .item-linha:last-child { border-bottom: none; }
+    .item-qty { font-weight: 900; color: var(--y); min-width: 28px; }
+    .item-name { flex: 1; }
+
+    .modo-badge {
+      display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700;
+      padding: 5px 12px; border-radius: 8px; margin-bottom: 10px;
+    }
+    .modo-entrega { background: #0c2340; color: #60a5fa; }
+    .modo-retirada { background: #1a2a1a; color: #4ade80; }
+    .pagto-badge { font-size: 12px; color: var(--text2); }
+
+    .agendado-box {
+      background: #1e1b4b; border: 1px solid #4338ca; border-radius: 10px;
+      padding: 10px 14px; margin-bottom: 10px; font-size: 13px; font-weight: 700; color: #a5b4fc;
+    }
+
+    .btns-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn {
+      padding: 10px 16px; border-radius: 10px; border: none; font-size: 13px;
+      font-weight: 700; font-family: inherit; cursor: pointer; transition: filter .15s;
+    }
+    .btn:active { filter: brightness(.9); }
+    .btn-green  { background: var(--green); color: #fff; }
+    .btn-orange { background: var(--orange); color: #fff; }
+    .btn-blue   { background: var(--blue); color: #fff; }
+    .btn-outline {
+      background: none; border: 1px solid var(--border); color: var(--text2); font-size: 12px;
+    }
+    .btn:disabled { opacity: .5; cursor: default; }
+
+    /* CUPOM FISCAL MODAL */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.8);
+      align-items: flex-end; justify-content: center; z-index: 500;
+    }
+    .modal-box {
+      background: var(--card); border-radius: 20px 20px 0 0; padding: 24px 20px 36px;
+      width: 100%; max-width: 480px;
+    }
+    .modal-title { font-size: 17px; font-weight: 900; margin-bottom: 4px; }
+    .modal-sub { font-size: 13px; color: var(--text2); margin-bottom: 20px; }
+    .upload-area {
+      border: 2px dashed var(--border); border-radius: 12px; padding: 28px;
+      text-align: center; cursor: pointer; margin-bottom: 12px;
+    }
+    .upload-area:hover { border-color: var(--y); }
+    .upload-icon { font-size: 36px; margin-bottom: 8px; }
+    .upload-txt { font-size: 13px; color: var(--text2); }
+    #cupom-preview { width: 100%; border-radius: 10px; margin: 10px 0; display: none; max-height: 200px; object-fit: cover; }
+    #cupom-status { font-size: 12px; color: var(--text2); margin-bottom: 12px; min-height: 18px; text-align: center; }
+
+    /* PRINT */
+    .btn-print { background: none; border: 1px solid var(--border); color: var(--text2); font-size: 12px; padding: 7px 12px; border-radius: 8px; cursor: pointer; font-family: inherit; }
+
+    /* EMPTY */
+    .empty { text-align: center; padding: 60px 20px; color: var(--text2); }
+    .empty-icon { font-size: 48px; margin-bottom: 12px; }
+    .empty-txt { font-size: 14px; }
+
+    /* LOADING */
+    .loading { text-align: center; padding: 40px; color: var(--text2); font-size: 14px; }
+
+    /* TOAST */
+    #toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: #22c55e; color: #fff; padding: 10px 24px; border-radius: 20px;
+      font-size: 14px; font-weight: 700; z-index: 999; display: none;
+    }
+
+    /* ALERTA NOVO PEDIDO */
+    #novo-pedido-overlay {
+      display: none; position: fixed; inset: 0; background: var(--y);
+      align-items: center; justify-content: center; flex-direction: column;
+      z-index: 1000; text-align: center; padding: 32px;
+      animation: pulse-bg 1s ease-in-out infinite alternate;
+    }
+    @keyframes pulse-bg { from { background: var(--y); } to { background: #e6b000; } }
+    .alerta-icon { font-size: 72px; margin-bottom: 16px; }
+    .alerta-title { font-size: 28px; font-weight: 900; color: #1a1a1a; margin-bottom: 8px; }
+    .alerta-num { font-size: 18px; color: #333; margin-bottom: 32px; }
+    .alerta-btn { background: #1a1a1a; color: var(--y); border: none; padding: 16px 48px; border-radius: 14px; font-size: 18px; font-weight: 900; cursor: pointer; font-family: inherit; }
+  </style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">📦</div>
+    <div class="login-title">Expedição</div>
+    <div class="login-sub">Econômico Delivery · Equipe Loja</div>
+    <input class="login-input" type="password" id="senha-input" placeholder="Senha de expedição" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="login-btn" onclick="doLogin()">Entrar</button>
+    <div class="login-err" id="login-err"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-screen">
+  <div class="header">
+    <div>
+      <div class="header-brand">📦 Expedição</div>
+      <div class="header-role">Econômico Delivery</div>
+    </div>
+    <button class="header-logout" onclick="logout()">Sair</button>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" id="tab-ativos" onclick="selectTab('ativos')">🔴 Ativos</div>
+    <div class="tab" id="tab-saiu" onclick="selectTab('saiu')">🚚 A Caminho</div>
+    <div class="tab" id="tab-concluidos" onclick="selectTab('concluidos')">✅ Entregues</div>
+  </div>
+
+  <div id="content-ativos" class="tab-content active">
+    <div class="stats-row" id="stats-area"></div>
+    <div id="pedidos-ativos-list"><div class="loading">Carregando...</div></div>
+  </div>
+
+  <div id="content-saiu" class="tab-content">
+    <div id="pedidos-saiu-list"><div class="loading">Carregando...</div></div>
+  </div>
+
+  <div id="content-concluidos" class="tab-content">
+    <div id="pedidos-concluidos-list"><div class="loading">Carregando...</div></div>
+  </div>
+</div>
+
+<!-- MODAL CUPOM FISCAL -->
+<div class="modal-overlay" id="dlg-cupom" onclick="if(event.target===this)fecharCupom()">
+  <div class="modal-box">
+    <div class="modal-title">📄 Cupom Fiscal</div>
+    <div class="modal-sub" id="cupom-pedido-num">Pedido —</div>
+    <div class="upload-area" onclick="document.getElementById('cupom-file').click()">
+      <div class="upload-icon">📷</div>
+      <div class="upload-txt">Toque para tirar foto ou selecionar o cupom fiscal</div>
+    </div>
+    <input type="file" id="cupom-file" accept="image/*" capture="environment" style="display:none" onchange="selecionarCupom(this)">
+    <img id="cupom-preview" alt="Cupom">
+    <div id="cupom-status"></div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-outline" style="flex:1" onclick="fecharCupom()">Cancelar</button>
+      <button class="btn btn-orange" style="flex:2" id="cupom-continuar-btn" disabled onclick="confirmarSaiu()">Confirmar saída →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ALERTA NOVO PEDIDO -->
+<div id="novo-pedido-overlay" style="display:flex;display:none">
+  <div class="alerta-icon">🛒</div>
+  <div class="alerta-title">Novo Pedido!</div>
+  <div class="alerta-num" id="alerta-num"></div>
+  <button class="alerta-btn" onclick="fecharAlerta()">Ver Pedido</button>
+</div>
+
+<div id="toast"></div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
+var EXPEDICAO_PASS_DEFAULT = 'expedicao2024';
+var _expPass = EXPEDICAO_PASS_DEFAULT;
+var _logado = false;
+var _pedidosTimer = null;
+var _pedidosKnown = null;
+var _tabAtual = 'ativos';
+var _saiu_docId = null, _saiu_num = null, _saiu_phone = null, _cupomUrl = null;
+var _alertTimer = null;
+
+firebase.initializeApp({
+  apiKey: "AIzaSyCfUZxP0gNPVOAdUsGuoRNSQlfbEsNMUCA",
+  authDomain: "economico-delivery.firebaseapp.com",
+  projectId: "economico-delivery",
+  storageBucket: "economico-delivery.firebasestorage.app",
+  messagingSenderId: "561359988054",
+  appId: "1:561359988054:web:5a4c17f2ced6150ccae2f7"
+});
+var db = firebase.firestore();
+
+// Carrega senha configurada pelo admin
+db.collection('config').doc('loja').get().then(function(doc) {
+  if (doc.exists && doc.data().expedicaoPass) {
+    _expPass = doc.data().expedicaoPass;
+  }
+});
+
+function doLogin() {
+  var senha = document.getElementById('senha-input').value;
+  if (senha === _expPass) {
+    _logado = true;
+    localStorage.setItem('ec_expedicao', '1');
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app-screen').style.display = 'flex';
+    iniciarPolling();
+    requestNotificationPermission();
+  } else {
+    document.getElementById('login-err').textContent = 'Senha incorreta.';
+    setTimeout(function(){ document.getElementById('login-err').textContent=''; }, 2000);
+  }
+}
+
+function logout() {
+  if (!confirm('Sair?')) return;
+  localStorage.removeItem('ec_expedicao');
+  if (_pedidosTimer) clearInterval(_pedidosTimer);
+  location.reload();
+}
+
+function requestNotificationPermission() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+}
+
+// Verifica sessão
+if (localStorage.getItem('ec_expedicao')) {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-screen').style.display = 'flex';
+  _logado = true;
+  setTimeout(function(){ iniciarPolling(); requestNotificationPermission(); }, 100);
+}
+
+function selectTab(tab) {
+  _tabAtual = tab;
+  ['ativos','saiu','concluidos'].forEach(function(t) {
+    document.getElementById('tab-'+t).classList.toggle('active', t === tab);
+    document.getElementById('content-'+t).classList.toggle('active', t === tab);
+  });
+}
+
+function iniciarPolling() {
+  fetchPedidos();
+  _pedidosTimer = setInterval(fetchPedidos, 20000);
+}
+
+function fetchPedidos() {
+  db.collection('pedidos').orderBy('createdAt','desc').limit(80).get()
+    .then(function(snap) {
+      // Detectar novos pedidos
+      if (_pedidosKnown !== null) {
+        snap.docs.forEach(function(doc) {
+          var d = doc.data();
+          if (!_pedidosKnown[doc.id] && (d.status === 'recebido' || d.status === 'preparando')) {
+            playAlerta(d.num || '');
+          }
+        });
+      }
+      var known = {};
+      snap.docs.forEach(function(d){ known[d.id] = true; });
+      _pedidosKnown = known;
+
+      var ativos    = snap.docs.filter(function(d){ return d.data().status === 'recebido' || d.data().status === 'preparando'; });
+      var saiu      = snap.docs.filter(function(d){ return d.data().status === 'saiu'; });
+      var concluidos= snap.docs.filter(function(d){ return d.data().status === 'entregue' || d.data().status === 'cancelado'; });
+
+      renderStats(ativos, saiu);
+      renderLista(ativos, 'pedidos-ativos-list', true);
+      renderLista(saiu, 'pedidos-saiu-list', false);
+      renderLista(concluidos, 'pedidos-concluidos-list', false);
+    });
+}
+
+function renderStats(ativos, saiu) {
+  var recebidos  = ativos.filter(function(d){ return d.data().status === 'recebido'; }).length;
+  var separando  = ativos.filter(function(d){ return d.data().status === 'preparando'; }).length;
+  document.getElementById('stats-area').innerHTML =
+    '<div class="stat-card"><div class="stat-val">'+recebidos+'</div><div class="stat-label">Aguardando</div></div>'
+    +'<div class="stat-card"><div class="stat-val">'+separando+'</div><div class="stat-label">Em separação</div></div>'
+    +'<div class="stat-card"><div class="stat-val">'+saiu.length+'</div><div class="stat-label">A caminho</div></div>';
+}
+
+var STATUS_LABEL = {
+  recebido:  {txt:'Recebido',       badge:'badge-blue'},
+  preparando:{txt:'Em separação',   badge:'badge-y'},
+  saiu:      {txt:'Saiu p/ entrega',badge:'badge-green'},
+  entregue:  {txt:'Entregue',       badge:'badge-green'},
+  cancelado: {txt:'Cancelado',      badge:'badge-orange'},
+};
+
+function renderLista(docs, containerId, mostrarBotoes) {
+  var el = document.getElementById(containerId);
+  if (!docs.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">✅</div><div class="empty-txt">Nenhum pedido aqui.</div></div>';
+    return;
+  }
+  el.innerHTML = docs.map(function(doc) {
+    var d = doc.data();
+    var st = STATUS_LABEL[d.status] || STATUS_LABEL.recebido;
+    var itens = (d.itens||[]).map(function(i){
+      return '<div class="item-linha"><span class="item-qty">'+i.qty+'x</span><span class="item-name">'+i.name+'</span></div>';
+    }).join('');
+    var modoHtml = d.modo === 'entrega'
+      ? '<div class="modo-badge modo-entrega">🚚 Entrega: '+(d.endereco||'—')+'</div>'
+      : '<div class="modo-badge modo-retirada">🏪 Retirada na loja</div>';
+    var pagto = d.pagamento === 'pix'
+      ? (d.pagamentoPago ? '✅ PIX pago' : '⏳ PIX — aguardando confirmação')
+      : '💳 Cartão na entrega';
+    var agendHtml = d.agendado && d.agendadoPara
+      ? '<div class="agendado-box">📅 Agendado para: '+d.agendadoPara+'</div>' : '';
+    var dt = d.createdAt && d.createdAt.toDate ? d.createdAt.toDate().toLocaleString('pt-BR') : '—';
+    var phone = (d.phone||'').replace(/\D/g,'');
+    var waLink = phone ? '<a href="https://wa.me/55'+phone+'" target="_blank" class="btn btn-outline">💬 WhatsApp</a>' : '';
+
+    var btnsHtml = '';
+    if (mostrarBotoes) {
+      if (d.status === 'recebido') {
+        btnsHtml = '<button class="btn btn-green" onclick="iniciarSeparacao(\''+doc.id+'\',\''+encodeURIComponent(d.nome||'')+'\',\''+encodeURIComponent(d.num||'')+'\',\''+phone+'\',this)">▶ Iniciar Separação</button>';
+      } else if (d.status === 'preparando') {
+        btnsHtml = '<button class="btn btn-orange" onclick="abrirCupom(\''+doc.id+'\',\''+encodeURIComponent(d.num||'')+'\',\''+phone+'\')">✅ Finalizar Separação</button>';
+      }
+    }
+    if (d.status === 'saiu') {
+      btnsHtml = '<button class="btn btn-blue" onclick="marcarEntregue(\''+doc.id+'\',\''+encodeURIComponent(d.nome||'')+'\',\''+encodeURIComponent(d.num||'')+'\',\''+phone+'\',this)">🏁 Marcar Entregue</button>';
+    }
+
+    return '<div class="pedido-card'+(d.status==='recebido'?' urgente':'')+'">'
+      +'<div class="pedido-header">'
+        +'<span class="pedido-num">'+d.num+'</span>'
+        +'<span class="pedido-nome">'+d.nome+'</span>'
+        +(d.agendado?'<span class="badge badge-agend">📅 Agendado</span>':'')
+        +'<span class="badge '+st.badge+'">'+st.txt+'</span>'
+      +'</div>'
+      +agendHtml
+      +'<div class="pedido-itens">'
+        +'<div class="pedido-itens-title">Itens do pedido</div>'
+        +itens
+      +'</div>'
+      +modoHtml
+      +'<div class="pedido-info">📱 '+(d.phone||'—')+' · <span class="pagto-badge">'+pagto+'</span><br>🕐 '+dt+'</div>'
+      +'<div class="btns-row">'+btnsHtml+waLink
+        +'<button class="btn-print" onclick="imprimirPedido(\''+doc.id+'\',this)">🖨️ Imprimir</button>'
+      +'</div>'
+      +'</div>';
+  }).join('');
+}
+
+function iniciarSeparacao(docId, nomeEnc, numEnc, phone, btn) {
+  btn.disabled = true; btn.textContent = '⏳';
+  db.collection('pedidos').doc(docId).update({ status: 'preparando' })
+    .then(function() {
+      fetchPedidos();
+      if (phone) {
+        var nome = decodeURIComponent(nomeEnc);
+        var num  = decodeURIComponent(numEnc);
+        var msg = '📦 Olá '+nome+'! Seu pedido '+num+' foi recebido e já está em separação. Em breve atualizaremos o status. Obrigado por comprar no Econômico Delivery! 🛒';
+        window.open('https://wa.me/55'+phone+'?text='+encodeURIComponent(msg), '_blank');
+      }
+    })
+    .catch(function(e){ btn.disabled=false; btn.textContent='▶ Iniciar Separação'; alert('Erro: '+e.message); });
+}
+
+function abrirCupom(docId, numEnc, phone) {
+  _saiu_docId = docId;
+  _saiu_num   = decodeURIComponent(numEnc);
+  _saiu_phone = phone;
+  _cupomUrl   = null;
+  document.getElementById('cupom-pedido-num').textContent = 'Pedido ' + _saiu_num;
+  document.getElementById('cupom-preview').style.display = 'none';
+  document.getElementById('cupom-file').value = '';
+  document.getElementById('cupom-status').textContent = '';
+  var btn = document.getElementById('cupom-continuar-btn');
+  btn.disabled = true;
+  document.getElementById('dlg-cupom').style.display = 'flex';
+}
+
+function fecharCupom() {
+  document.getElementById('dlg-cupom').style.display = 'none';
+}
+
+function selecionarCupom(input) {
+  if (!input.files || !input.files[0]) return;
+  var file = input.files[0];
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var img = document.getElementById('cupom-preview');
+    img.src = e.target.result;
+    img.style.display = 'block';
+    document.getElementById('cupom-status').textContent = 'Enviando foto…';
+    var fd = new FormData();
+    fd.append('image', file);
+    fetch('https://api.imgbb.com/1/upload?key=c1402a78f5b442313482fd3cb1789ae0', {method:'POST', body:fd})
+      .then(function(r){ return r.json(); })
+      .then(function(j) {
+        if (j.data && j.data.url) {
+          _cupomUrl = j.data.url;
+          document.getElementById('cupom-status').textContent = '✅ Foto enviada com sucesso';
+          document.getElementById('cupom-continuar-btn').disabled = false;
+        } else {
+          document.getElementById('cupom-status').textContent = '❌ Erro no envio. Tente novamente.';
+        }
+      })
+      .catch(function(){ document.getElementById('cupom-status').textContent = '❌ Sem conexão.'; });
+  };
+  reader.readAsDataURL(file);
+}
+
+function confirmarSaiu() {
+  document.getElementById('dlg-cupom').style.display = 'none';
+  var update = { status: 'saiu' };
+  if (_cupomUrl) update.cupomFiscalUrl = _cupomUrl;
+  db.collection('pedidos').doc(_saiu_docId).update(update)
+    .then(function() {
+      fetchPedidos();
+      showToast('Pedido finalizado!');
+      if (_saiu_phone) {
+        var msg = '🛵 Olá! Seu pedido '+_saiu_num+' saiu para entrega e chegará em breve. Obrigado por comprar no Econômico Delivery!';
+        window.open('https://wa.me/55'+_saiu_phone+'?text='+encodeURIComponent(msg), '_blank');
+      }
+    })
+    .catch(function(e){ alert('Erro: '+e.message); });
+}
+
+function marcarEntregue(docId, nomeEnc, numEnc, phone, btn) {
+  if (!confirm('Confirmar entrega do pedido '+decodeURIComponent(numEnc)+'?')) return;
+  btn.disabled = true; btn.textContent = '⏳';
+  db.collection('pedidos').doc(docId).update({ status: 'entregue' })
+    .then(function() {
+      fetchPedidos();
+      showToast('Entregue!');
+      if (phone) {
+        var msg = '✅ Olá '+decodeURIComponent(nomeEnc)+'! Seu pedido '+decodeURIComponent(numEnc)+' foi entregue. Esperamos que tenha gostado! Volte sempre 😊';
+        window.open('https://wa.me/55'+phone+'?text='+encodeURIComponent(msg), '_blank');
+      }
+    })
+    .catch(function(e){ btn.disabled=false; btn.textContent='🏁 Marcar Entregue'; alert('Erro: '+e.message); });
+}
+
+function imprimirPedido(docId, btn) {
+  btn.textContent = '⏳';
+  db.collection('pedidos').doc(docId).get().then(function(doc) {
+    btn.textContent = '🖨️ Imprimir';
+    if (!doc.exists) return;
+    var d = doc.data();
+    var itens = (d.itens||[]).map(function(i){
+      return '<tr><td style="padding:6px 8px;border-bottom:1px solid #eee">'+i.qty+'x '+i.name+'</td></tr>';
+    }).join('');
+    var data = d.createdAt && d.createdAt.toDate ? d.createdAt.toDate().toLocaleString('pt-BR') : '—';
+    var agendLinha = d.agendado && d.agendadoPara
+      ? '<tr><td colspan="2" style="padding:6px 8px;background:#fff3cd;font-weight:700">📅 AGENDADO PARA: '+d.agendadoPara+'</td></tr>' : '';
+    var pagStatus = d.pagamento==='card' ? 'Cartão na entrega'
+      : d.pagamentoPago ? 'PIX ✅ Confirmado' : 'PIX ⏳ Aguardando';
+    var logoUrl = 'https://fc360oficial.github.io/economicodelivery/logo.png';
+    var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Pedido '+d.num+'</title>'
+      +'<style>*{box-sizing:border-box}body{font-family:Arial,sans-serif;font-size:13px;margin:0;padding:16px;color:#111}'
+      +'.print-header{display:flex;align-items:center;justify-content:space-between;padding-bottom:10px;border-bottom:2px solid #111;margin-bottom:14px}'
+      +'.print-logo{height:48px;object-fit:contain}.print-num{font-size:20px;font-weight:900}'
+      +'.print-date{font-size:11px;color:#555;margin-top:2px}'
+      +'.modo-badge{display:inline-block;margin-top:4px;font-size:11px;font-weight:700;border:1.5px solid #111;padding:2px 8px;border-radius:4px}'
+      +'h2{font-size:13px;margin:12px 0 4px;border-bottom:1.5px solid #111;padding-bottom:2px;text-transform:uppercase}'
+      +'table{width:100%;border-collapse:collapse}.info td{padding:4px 0}.info td:first-child{font-weight:700;width:120px}'
+      +'@media print{body{padding:0}}</style></head><body>'
+      +'<div class="print-header">'
+        +'<img class="print-logo" src="'+logoUrl+'" onerror="this.style.display=\'none\'">'
+        +'<div style="text-align:right">'
+          +'<div class="print-num">'+d.num+'</div>'
+          +'<div class="print-date">'+data+'</div>'
+          +'<div class="modo-badge">'+(d.modo==='entrega'?'🚚 ENTREGA':'🏪 RETIRADA')+'</div>'
+        +'</div>'
+      +'</div>'
+      +'<table class="info">'
+        +'<tr><td>Cliente</td><td>'+d.nome+'</td></tr>'
+        +'<tr><td>Celular</td><td>'+(d.phone||'—')+'</td></tr>'
+        +(d.modo==='entrega'?'<tr><td>Endereço</td><td>'+(d.endereco||'—')+'</td></tr>':'')
+        +'<tr><td>Pagamento</td><td>'+pagStatus+'</td></tr>'
+        +(d.agendado&&d.agendadoPara?'<tr><td>Agendado</td><td style="font-weight:700;color:#b45309">'+d.agendadoPara+'</td></tr>':'')
+      +'</table>'
+      +'<h2>Itens</h2>'
+      +'<table><tbody>'+agendLinha+itens+'</tbody></table>'
+      +'<div style="margin-top:24px;border-top:1px dashed #ccc;padding-top:12px;font-size:11px;color:#888;text-align:center">Econômico Delivery · Separação '+d.num+'</div>'
+      +'<script>window.onload=function(){window.print();}<\/script>'
+      +'</body></html>';
+    var w = window.open('','_blank','width=420,height=600');
+    w.document.write(html); w.document.close();
+  }).catch(function(){ btn.textContent='🖨️ Imprimir'; });
+}
+
+// ALERTA NOVO PEDIDO
+var _audioCtx = null;
+function playAlerta(num) {
+  document.getElementById('alerta-num').textContent = num ? 'Pedido ' + num : 'Novo pedido recebido!';
+  document.getElementById('novo-pedido-overlay').style.display = 'flex';
+  if (!_audioCtx) { try { _audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){} }
+  if (_audioCtx) {
+    var notas = [523, 659, 784, 1047, 784];
+    notas.forEach(function(freq, i) {
+      var o = _audioCtx.createOscillator();
+      var g = _audioCtx.createGain();
+      o.connect(g); g.connect(_audioCtx.destination);
+      o.type = 'triangle'; o.frequency.value = freq;
+      var t = _audioCtx.currentTime + i * 0.18;
+      g.gain.setValueAtTime(0.4, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+      o.start(t); o.stop(t + 0.32);
+    });
+  }
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification('🛒 Novo Pedido!', { body: num ? 'Pedido ' + num + ' recebido.' : 'Novo pedido recebido!', icon: 'https://fc360oficial.github.io/economicodelivery/logo.png' });
+  }
+  selectTab('ativos');
+}
+function fecharAlerta() {
+  document.getElementById('novo-pedido-overlay').style.display = 'none';
+}
+
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  setTimeout(function(){ t.style.display = 'none'; }, 2500);
+}
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js');
+}
+</script>
+</body>
+</html>

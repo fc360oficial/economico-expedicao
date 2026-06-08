@@ -1,0 +1,21 @@
+{
+  "name": "Econômico Expedição",
+  "short_name": "Expedição",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0d0d0d",
+  "theme_color": "#FFC600",
+  "icons": [
+    {
+      "src": "https://fc360oficial.github.io/economicodelivery/logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://fc360oficial.github.io/economicodelivery/logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
