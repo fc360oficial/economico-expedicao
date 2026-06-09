@@ -207,6 +207,7 @@
   <div class="tabs">
     <div class="tab active" id="tab-ativos" onclick="selectTab('ativos')">🔴 Ativos</div>
     <div class="tab" id="tab-saiu" onclick="selectTab('saiu')">🚚 A Caminho</div>
+    <div class="tab" id="tab-retornados" onclick="selectTab('retornados')">⚠️ Retornados</div>
     <div class="tab" id="tab-concluidos" onclick="selectTab('concluidos')">✅ Entregues</div>
   </div>
 
@@ -217,6 +218,10 @@
 
   <div id="content-saiu" class="tab-content">
     <div id="pedidos-saiu-list"><div class="loading">Carregando...</div></div>
+  </div>
+
+  <div id="content-retornados" class="tab-content">
+    <div id="pedidos-retornados-list"><div class="loading">Carregando...</div></div>
   </div>
 
   <div id="content-concluidos" class="tab-content">
@@ -342,7 +347,7 @@ if (localStorage.getItem('ec_expedicao')) {
 
 function selectTab(tab) {
   _tabAtual = tab;
-  ['ativos','saiu','concluidos'].forEach(function(t) {
+  ['ativos','saiu','retornados','concluidos'].forEach(function(t) {
     document.getElementById('tab-'+t).classList.toggle('active', t === tab);
     document.getElementById('content-'+t).classList.toggle('active', t === tab);
   });
@@ -369,32 +374,39 @@ function fetchPedidos() {
       snap.docs.forEach(function(d){ known[d.id] = true; });
       _pedidosKnown = known;
 
-      var ativos    = snap.docs.filter(function(d){ return d.data().status === 'recebido' || d.data().status === 'preparando'; });
-      var saiu      = snap.docs.filter(function(d){ return d.data().status === 'saiu'; });
-      var concluidos= snap.docs.filter(function(d){ return d.data().status === 'entregue' || d.data().status === 'cancelado'; });
+      var ativos     = snap.docs.filter(function(d){ return d.data().status === 'recebido' || d.data().status === 'preparando'; });
+      var saiu       = snap.docs.filter(function(d){ return d.data().status === 'saiu'; });
+      var retornados = snap.docs.filter(function(d){ return d.data().status === 'nao_atendido'; });
+      var concluidos = snap.docs.filter(function(d){ return d.data().status === 'entregue' || d.data().status === 'cancelado'; });
 
-      renderStats(ativos, saiu);
+      renderStats(ativos, saiu, retornados);
       renderLista(ativos, 'pedidos-ativos-list', true);
       renderLista(saiu, 'pedidos-saiu-list', false);
+      renderRetornados(retornados);
       renderLista(concluidos, 'pedidos-concluidos-list', false);
     });
 }
 
-function renderStats(ativos, saiu) {
+function renderStats(ativos, saiu, retornados) {
   var recebidos  = ativos.filter(function(d){ return d.data().status === 'recebido'; }).length;
   var separando  = ativos.filter(function(d){ return d.data().status === 'preparando'; }).length;
+  var retQtd     = retornados ? retornados.length : 0;
   document.getElementById('stats-area').innerHTML =
     '<div class="stat-card"><div class="stat-val">'+recebidos+'</div><div class="stat-label">Aguardando</div></div>'
     +'<div class="stat-card"><div class="stat-val">'+separando+'</div><div class="stat-label">Em separação</div></div>'
-    +'<div class="stat-card"><div class="stat-val">'+saiu.length+'</div><div class="stat-label">A caminho</div></div>';
+    +'<div class="stat-card"><div class="stat-val">'+saiu.length+'</div><div class="stat-label">A caminho</div></div>'
+    +(retQtd > 0 ? '<div class="stat-card" style="border-color:#f97316;cursor:pointer" onclick="selectTab(\'retornados\')">'
+      +'<div class="stat-val" style="color:#f97316">'+retQtd+'</div>'
+      +'<div class="stat-label" style="color:#f97316">⚠️ Retornados</div></div>' : '');
 }
 
 var STATUS_LABEL = {
-  recebido:  {txt:'Recebido',       badge:'badge-blue'},
-  preparando:{txt:'Em separação',   badge:'badge-y'},
-  saiu:      {txt:'Saiu p/ entrega',badge:'badge-green'},
-  entregue:  {txt:'Entregue',       badge:'badge-green'},
-  cancelado: {txt:'Cancelado',      badge:'badge-orange'},
+  recebido:     {txt:'Recebido',       badge:'badge-blue'},
+  preparando:   {txt:'Em separação',   badge:'badge-y'},
+  saiu:         {txt:'Saiu p/ entrega',badge:'badge-green'},
+  entregue:     {txt:'Entregue',       badge:'badge-green'},
+  cancelado:    {txt:'Cancelado',      badge:'badge-orange'},
+  nao_atendido: {txt:'Não atendido',   badge:'badge-orange'},
 };
 
 function renderLista(docs, containerId, mostrarBotoes) {
@@ -490,6 +502,70 @@ function renderLista(docs, containerId, mostrarBotoes) {
       +'</div>'
       +'</div>';
   }).join('');
+}
+
+function renderRetornados(docs) {
+  var el = document.getElementById('pedidos-retornados-list');
+  var tabBtn = document.getElementById('tab-retornados');
+  if (tabBtn) tabBtn.style.color = docs && docs.length ? '#f97316' : '';
+
+  if (!docs || !docs.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">✅</div><div class="empty-txt">Nenhum pedido retornado.</div></div>';
+    return;
+  }
+  el.innerHTML = docs.map(function(doc) {
+    var d = doc.data();
+    var phone = (d.phone||'').replace(/\D/g,'');
+    var totalFmt = 'R$'+Number(d.total||0).toFixed(2).replace('.',',');
+    var itens = (d.itens||[]).map(function(i){
+      var subtotal = 'R$'+(i.qty*i.price).toFixed(2).replace('.',',');
+      return '<div class="item-linha"><span class="item-qty">'+i.qty+'x</span><span class="item-name">'+i.name+'</span><span style="font-size:12px;color:var(--text2)">'+subtotal+'</span></div>';
+    }).join('');
+    var dt = d.createdAt && d.createdAt.toDate ? d.createdAt.toDate().toLocaleString('pt-BR') : '—';
+    var waLink = phone ? '<a href="https://wa.me/55'+phone+'" target="_blank" class="btn btn-outline">💬 WhatsApp</a>' : '';
+    return '<div class="pedido-card" style="border-color:#f97316">'
+      +'<div style="background:#1a0800;padding:8px 12px;border-radius:8px 8px 0 0;font-size:12px;font-weight:700;color:#f97316">⚠️ Cliente não atendeu — pedido retornou para a loja</div>'
+      +'<div class="pedido-header">'
+        +'<div><div class="pedido-num">#'+d.num+'</div><div class="pedido-nome">'+(d.nome||'—')+'</div></div>'
+        +'<span class="badge badge-orange">Não atendido</span>'
+      +'</div>'
+      +'<div class="pedido-itens">'+itens+'</div>'
+      +'<div class="pedido-info">📍 '+(d.endereco||'—')+'</div>'
+      +'<div class="pedido-info">📱 '+(d.phone||'—')+' · 🕐 '+dt+'</div>'
+      +'<div class="pedido-info"><span style="font-size:17px;font-weight:900;color:var(--y)">'+totalFmt+'</span></div>'
+      +'<div class="btns-row">'
+        +'<button class="btn btn-orange" onclick="reenviarEntrega(\''+doc.id+'\',\''+encodeURIComponent(d.num||'')+'\',\''+phone+'\')">🔄 Re-tentar entrega</button>'
+        +'<button class="btn btn-outline" style="color:var(--red);border-color:var(--red)" onclick="cancelarRetornado(\''+doc.id+'\',\''+encodeURIComponent(d.num||'')+'\',\''+phone+'\',\''+encodeURIComponent(d.nome||'')+'\')">✖ Cancelar</button>'
+        +waLink
+      +'</div>'
+      +'</div>';
+  }).join('');
+}
+
+function reenviarEntrega(docId, numEnc, phone) {
+  if (!confirm('Re-tentar entrega do pedido #'+decodeURIComponent(numEnc)+'?')) return;
+  db.collection('pedidos').doc(docId).update({ status: 'saiu' })
+    .then(function() {
+      fetchPedidos();
+      if (phone) {
+        var msg = '🔄 Olá! Estamos tentando entregar seu pedido #'+decodeURIComponent(numEnc)+' novamente. Em breve o entregador chegará!';
+        window.open('https://wa.me/55'+phone+'?text='+encodeURIComponent(msg), '_blank');
+      }
+    })
+    .catch(function(e) { alert('Erro: '+e.message); });
+}
+
+function cancelarRetornado(docId, numEnc, phone, nomeEnc) {
+  if (!confirm('Cancelar pedido #'+decodeURIComponent(numEnc)+'?')) return;
+  db.collection('pedidos').doc(docId).update({ status: 'cancelado', motivoCancelamento: 'Cliente não atendeu na entrega', canceladoEm: new Date().toLocaleString('pt-BR') })
+    .then(function() {
+      fetchPedidos();
+      if (phone) {
+        var msg = '❌ Olá '+decodeURIComponent(nomeEnc)+'! Infelizmente seu pedido #'+decodeURIComponent(numEnc)+' foi cancelado pois não conseguimos realizar a entrega. Entre em contato para mais informações.';
+        window.open('https://wa.me/55'+phone+'?text='+encodeURIComponent(msg), '_blank');
+      }
+    })
+    .catch(function(e) { alert('Erro: '+e.message); });
 }
 
 function iniciarSeparacao(docId, nomeEnc, numEnc, phone, btn) {
