@@ -284,7 +284,7 @@ var _logado = false;
 var _pedidosTimer = null;
 var _pedidosKnown = null;
 var _tabAtual = 'ativos';
-var _saiu_docId = null, _saiu_num = null, _saiu_phone = null, _cupomUrl = null;
+var _saiu_docId = null, _saiu_num = null, _saiu_phone = null, _saiu_modo = null, _cupomUrl = null;
 var _alertTimer = null;
 
 firebase.initializeApp({
@@ -430,7 +430,7 @@ function renderLista(docs, containerId, mostrarBotoes) {
       if (d.status === 'recebido') {
         btnsHtml = '<button class="btn btn-green" onclick="iniciarSeparacao(\''+doc.id+'\',\''+encodeURIComponent(d.nome||'')+'\',\''+encodeURIComponent(d.num||'')+'\',\''+phone+'\',this)">▶ Iniciar Separação</button>';
       } else if (d.status === 'preparando') {
-        btnsHtml = '<button class="btn btn-orange" onclick="abrirCupom(\''+doc.id+'\',\''+encodeURIComponent(d.num||'')+'\',\''+phone+'\')">✅ Finalizar Separação</button>';
+        btnsHtml = '<button class="btn btn-orange" onclick="abrirCupom(\''+doc.id+'\',\''+encodeURIComponent(d.num||'')+'\',\''+phone+'\',\''+( d.modo||'entrega')+'\')">✅ Finalizar Separação</button>';
       }
     }
     if (d.status === 'saiu') {
@@ -507,10 +507,11 @@ function iniciarSeparacao(docId, nomeEnc, numEnc, phone, btn) {
     .catch(function(e){ btn.disabled=false; btn.textContent='▶ Iniciar Separação'; alert('Erro: '+e.message); });
 }
 
-function abrirCupom(docId, numEnc, phone) {
+function abrirCupom(docId, numEnc, phone, modo) {
   _saiu_docId = docId;
   _saiu_num   = decodeURIComponent(numEnc);
   _saiu_phone = phone;
+  _saiu_modo  = modo || 'entrega';
   _cupomUrl   = null;
   document.getElementById('cupom-pedido-num').textContent = 'Pedido ' + _saiu_num;
   document.getElementById('cupom-preview').style.display = 'none';
@@ -562,7 +563,9 @@ function confirmarSaiu() {
       fetchPedidos();
       showToast('Pedido finalizado!');
       if (_saiu_phone) {
-        var msg = '🛵 Olá! Seu pedido '+_saiu_num+' saiu para entrega!\n\n🔐 Seu código de confirmação de entrega: *'+codigo+'*\n\nInforme este código ao entregador na hora da entrega.';
+        var msg = _saiu_modo === 'retirada'
+          ? '🏪 Olá! Seu pedido '+_saiu_num+' está pronto para retirada na loja!\n\n🔐 Seu código de confirmação: *'+codigo+'*\n\nMostre este código ao atendente quando for retirar.'
+          : '🛵 Olá! Seu pedido '+_saiu_num+' saiu para entrega!\n\n🔐 Seu código de confirmação de entrega: *'+codigo+'*\n\nInforme este código ao entregador na hora da entrega.';
         window.open('https://wa.me/55'+_saiu_phone+'?text='+encodeURIComponent(msg), '_blank');
       }
     })
