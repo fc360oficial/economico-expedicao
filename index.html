@@ -18,7 +18,7 @@
 
     /* LOGIN */
     #login-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
-    .login-box { background: var(--card); border-radius: 20px; padding: 40px 32px; width: 100%; max-width: 360px; text-align: center; }
+    .login-box { background: var(--card); border-radius: 20px; padding: 40px 32px; width: 100%; max-width: 360px; text-align: center; box-shadow: 0 4px 28px rgba(0,0,0,.10); }
     .login-logo { font-size: 40px; margin-bottom: 8px; }
     .login-title { font-size: 22px; font-weight: 900; color: var(--y); margin-bottom: 4px; }
     .login-sub { font-size: 13px; color: var(--text2); margin-bottom: 32px; }
@@ -40,7 +40,7 @@
     .header {
       background: var(--card); border-top: 5px solid var(--y); border-bottom: 1px solid var(--border);
       padding: 14px 20px; display: flex; align-items: center; gap: 12px;
-      position: sticky; top: 0; z-index: 100;
+      position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 10px rgba(0,0,0,.07);
     }
     .header-brand { font-size: 16px; font-weight: 900; color: #111; }
     .header-role { font-size: 12px; color: var(--text2); flex: 1; }
@@ -66,7 +66,7 @@
     .stats-row { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
     .stat-card {
       flex: 1; min-width: 80px; background: var(--card); border-radius: 12px;
-      padding: 12px; text-align: center; border: 1px solid var(--border);
+      padding: 12px; text-align: center; border: 1px solid var(--border); box-shadow: 0 2px 8px rgba(0,0,0,.05);
     }
     .stat-val { font-size: 24px; font-weight: 900; color: var(--y); }
     .stat-label { font-size: 11px; color: var(--text2); margin-top: 2px; }
@@ -74,7 +74,7 @@
     /* PEDIDOS */
     .pedido-card {
       background: var(--card); border-radius: 14px; padding: 16px;
-      margin-bottom: 12px; border: 1px solid var(--border);
+      margin-bottom: 12px; border: 1px solid var(--border); box-shadow: 0 2px 12px rgba(0,0,0,.06);
     }
     .pedido-card.urgente { border-color: var(--y); }
     .pedido-header { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
@@ -134,7 +134,7 @@
     }
     .modal-box {
       background: var(--card); border-radius: 20px 20px 0 0; padding: 24px 20px 36px;
-      width: 100%; max-width: 480px;
+      width: 100%; max-width: 480px; box-shadow: 0 -8px 30px rgba(0,0,0,.10);
     }
     .modal-title { font-size: 17px; font-weight: 900; margin-bottom: 4px; }
     .modal-sub { font-size: 13px; color: var(--text2); margin-bottom: 20px; }
@@ -450,7 +450,7 @@ function renderLista(docs, containerId, mostrarBotoes) {
       if (isRetirada && d.codigoEntrega) {
         // retirada em loja: equipe confirma quando cliente chega
         btnsHtml = '<div style="font-size:12px;color:var(--y);font-weight:700;padding:4px 0;margin-bottom:8px">🏪 Retirada em loja — confirme quando o cliente chegar</div>'
-          + '<input type="tel" id="cod-'+doc.id+'" placeholder="· · · ·" maxlength="4" inputmode="numeric" style="width:100%;padding:12px;background:#111;border:2px solid #444;border-radius:8px;color:#fff;font-size:28px;font-weight:800;font-family:monospace;letter-spacing:10px;text-align:center;outline:none;margin-bottom:8px;box-sizing:border-box">'
+          + '<input type="tel" id="cod-'+doc.id+'" placeholder="· · · ·" maxlength="4" inputmode="numeric" style="width:100%;padding:12px;background:#f9f9f9;border:2px solid var(--border);border-radius:8px;color:#1a1a1a;font-size:28px;font-weight:800;font-family:monospace;letter-spacing:10px;text-align:center;outline:none;margin-bottom:8px;box-sizing:border-box">'
           + '<button class="btn btn-blue" style="width:100%" onclick="verificarCodigo(\''+doc.id+'\',\''+d.codigoEntrega+'\',\''+encodeURIComponent(d.nome||'')+'\',\''+encodeURIComponent(d.num||'')+'\',\''+phone+'\')">✓ Confirmar Retirada</button>';
       } else if (isRetirada) {
         btnsHtml = '<button class="btn btn-blue" onclick="marcarEntregue(\''+doc.id+'\',\''+encodeURIComponent(d.nome||'')+'\',\''+encodeURIComponent(d.num||'')+'\',\''+phone+'\',this)">🏪 Confirmar Retirada</button>';
