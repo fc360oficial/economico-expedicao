@@ -333,10 +333,9 @@ function doLogin() {
 }
 
 function logout() {
-  if (!confirm('Sair?')) return;
   localStorage.removeItem('ec_expedicao');
   if (_pedidosTimer) clearInterval(_pedidosTimer);
-  location.reload();
+  location.href = 'https://fc360oficial.github.io/delivery_retaguarda/';
 }
 
 function requestNotificationPermission() {
